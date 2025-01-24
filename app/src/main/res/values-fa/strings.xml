@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sync Player</string>
+    <string name="tvTypeUsername">لطفا نام کاربری خود را وارد کنید</string>
+    <string name="etUsernameHint">نام کاربری</string>
+    <string name="etUrlFieldHint">لینک فیلم</string>
+    <string name="etRoomIDField">شناسه اتاق</string>
+    <string name="btnClient">تماشاگر</string>
+    <string name="btnServer">پخش کننده</string>
+    <string name="btnLoadPlay">بارگیری و پخش</string>
+    <string name="btnJoinPLay">پیوستن و پخش</string>
+    <string name="swLangEn">انگلیسی</string>
+    <string name="swLangFa">پارسی</string>
+    <string name="swThemeD">تاریک</string>
+    <string name="swThemeL">روشن</string>
+    <string name="imgBackDesc">تصویر پس‌زمینه</string>
+    <string name="errEnterUN">لطفا اول یک نام کاربری وارد کنید</string>
+    <string name="toastRoomIDCopied">شناسه اتاق : %s در کلیپ برد ذخیره شد</string>
+    <string name="errRoomIDNA">شناسه اتاق خالی میباشد</string>
+    <string name="errMovieURLNA">لطفا اول آدرس فیلم را وارد کنید</string>
+    <string name="errRoomIDEmpty">لطفا اول شناسه اتاق را وارد کنید</string>
+    <string name="connectedToServer">به سرور متصل شد</string>
+    <string name="errDisconnected">اتصال قطع شد</string>
+    <string name="errMovieLinkVerify">آدرس وارد شده معتبر نمی باشد</string>
+    <string name="onNewUserJoined">%s به اتاق پیوست</string>
+    <string name="onUserDisconnected">%s اتاق را ترک کرد</string>
+    <string name="onRoomOwnerDisconnected">ارتباط با ارسال کننده قطع شد !</string>
+    <string name="usersInRoomCountLabel">"تماشاچی های اتاق: "</string>
+    <string name="secretKey">b007clientsCnema</string>
+</resources>

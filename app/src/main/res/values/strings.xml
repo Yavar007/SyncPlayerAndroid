@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Sync Player</string>
+    <string name="tvTypeUsername">Please Enter Your Username</string>
+    <string name="etUsernameHint">Username</string>
+    <string name="etUrlFieldHint">Movie Link URL</string>
+    <string name="etRoomIDField">Room ID</string>
+    <string name="btnClient">Spectator</string>
+    <string name="btnServer">Projectionist</string>
+    <string name="btnLoadPlay">Load &amp; Play</string>
+    <string name="btnJoinPLay">Join &amp; Play</string>
+    <string name="swLangEn">En</string>
+    <string name="swLangFa">Fa</string>
+    <string name="swThemeD">Dark</string>
+    <string name="swThemeL">Light</string>
+    <string name="imgBackDesc">Background Image</string>
+    <string name="errEnterUN">Please Enter a Username First</string>
+    <string name="toastRoomIDCopied">Room ID: %s copied to clipboard</string>
+    <string name="errRoomIDNA">Room ID is Empty</string>
+    <string name="errMovieURLNA">Please Enter Movie URL First</string>
+    <string name="errRoomIDEmpty">PLease Enter Room ID First</string>
+    <string name="connectedToServer">Connected to Server</string>
+    <string name="errDisconnected">Disconnected</string>
+    <string name="errMovieLinkVerify">Input URL not Verified</string>
+    <string name="onNewUserJoined">%s Joined The Room</string>
+    <string name="onUserDisconnected">%s Left The Room</string>
+    <string name="onRoomOwnerDisconnected">Projectionist is Offline !</string>
+    <string name="usersInRoomCountLabel">Spectators In Room: </string>
+    <string name="secretKey">b007clientsCnema</string>
+</resources>
