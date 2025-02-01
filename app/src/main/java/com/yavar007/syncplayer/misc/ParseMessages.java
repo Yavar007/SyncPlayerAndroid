@@ -1,7 +1,12 @@
 package com.yavar007.syncplayer.misc;
 
+
+import android.content.Context;
+import android.util.Base64;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yavar007.syncplayer.R;
 import com.yavar007.syncplayer.models.CommunicationModels.AcceptMessageModel;
 import com.yavar007.syncplayer.models.CommunicationModels.AliveMessageModel;
 import com.yavar007.syncplayer.models.CommunicationModels.ClientJoinedMessageModel;
@@ -10,17 +15,18 @@ import com.yavar007.syncplayer.models.CommunicationModels.PlayerMessageModel;
 import com.yavar007.syncplayer.models.CommunicationModels.RejectMessageModel;
 import com.yavar007.syncplayer.models.CommunicationModels.RequestToJoinMessageModel;
 
+import java.nio.charset.StandardCharsets;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import android.util.Base64;
 
-import java.nio.charset.StandardCharsets;
 
 public class ParseMessages {
-    private final String secretKey="b007clientsCnema";
-    public MessageModel parseMessage(String message) {
-        String decryptedMessage=decrypt(message, secretKey);
+
+    public MessageModel parseMessage(String message, Context context) {
+
+        String decryptedMessage=decrypt(message,context);
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             // First, read the JSON as a generic JsonNode to inspect the type field
@@ -42,11 +48,12 @@ public class ParseMessages {
             return null;
         }
     }
-    private static String decrypt(String strToDecrypt, String secret) {
+    private static String decrypt(String strToDecrypt,Context context) {
+        String secretkey =  context.getString(R.string.secretKey);
         try {
             String[] parts = strToDecrypt.split(":");
             IvParameterSpec iv = new IvParameterSpec(Base64.decode(parts[0], Base64.NO_WRAP));
-            SecretKeySpec secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "AES");
+            SecretKeySpec secretKey = new SecretKeySpec(secretkey.getBytes(StandardCharsets.UTF_8), "AES");
 
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
             cipher.init(Cipher.DECRYPT_MODE, secretKey, iv);
@@ -58,4 +65,5 @@ public class ParseMessages {
             return e.getMessage();
         }
     }
+
 }

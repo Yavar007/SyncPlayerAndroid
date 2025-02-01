@@ -121,6 +121,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
         osName = "Android "+ Build.VERSION.RELEASE;
         deviceName= Build.MODEL;
         String combinedInfo = osName + "-" + deviceName;
@@ -216,10 +217,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         player.addListener(new Player.Listener() {
             @Override
             public void onEvents(@NonNull Player player, @NonNull Player.Events events) {
-                if (isClientConnected){
-                    stop();
-                    player.release();
-                }
+
                 Player.Listener.super.onEvents(player, events);
             }
             @Override
@@ -380,7 +378,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
                     if (s.equals("syncplayer/rooms")){
                         if (remsg.startsWith(roomID)) {
                             remsg = remsg.split(":")[1]+":"+remsg.split(":")[2];
-                            MessageModel message=new ParseMessages().parseMessage(remsg);
+                            MessageModel message=new ParseMessages().parseMessage(remsg,MainActivity.this);
                             if (!message.getId().equals(clientId)){
                                 if (isServer){
                                     if (message.getType().equals("req")){
@@ -496,6 +494,9 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
                                 }
                             }
                             else {
+                                if (player.isPlaying()){
+                                    player.stop();
+                                }
                                 Toast.makeText(MainActivity.this, R.string.errMovieLinkVerify, Toast.LENGTH_SHORT).show();
                             }
                         }
@@ -530,6 +531,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
             }
         });
         specChecker = Executors.newScheduledThreadPool(1);
+        goPortrait();
     }
     public void sendMessage(String roomID, MessageModel messageModel) {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -576,9 +578,12 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         new SecureRandom().nextBytes(iv);
         return new IvParameterSpec(iv);
     }
+
     @SuppressLint("SourceLockedOrientationActivity")
     private void goPortrait() {
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
         if (getSupportActionBar() != null) {
             getSupportActionBar().show();
         }
@@ -682,13 +687,15 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
                 movieLInk=url;
             }
             else {
-                Toast.makeText(this, R.string.errMovieLinkVerify, Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), R.string.errMovieLinkVerify, Toast.LENGTH_SHORT).show();
             }
 
         }
         else{
-            Toast.makeText(this,R.string.errMovieURLNA, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(),R.string.errMovieURLNA, Toast.LENGTH_SHORT).show();
         }
+
+
 
     }
     public void play() {
@@ -837,8 +844,10 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
     }
     private void setLocale(String lang) {
         Locale locale = new Locale(lang);
-        String defaultlang = Locale.getDefault().getLanguage();
-        if (!defaultlang.equals(lang)){
+        Locale currentLocale = getResources().getConfiguration().locale;
+
+        // Check if the current locale is different from the desired locale
+        if (!currentLocale.getLanguage().equals(locale.getLanguage())) {
             Locale.setDefault(locale);
             Resources resources = getResources();
             Configuration config = resources.getConfiguration();
@@ -846,23 +855,13 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
             resources.updateConfiguration(config, resources.getDisplayMetrics());
             recreate(); // Restart activity to apply the new locale
         }
-        else{
-            Locale.setDefault(locale);
-            Resources resources = getResources();
-            Configuration config = resources.getConfiguration();
-            config.setLocale(locale);
-            resources.updateConfiguration(config, resources.getDisplayMetrics());
-        }
+
     }
     public void loadLocale() {
         SharedPreferences prefs = getSharedPreferences("Settings", Activity.MODE_PRIVATE);
-        String language = prefs.getString("My_Lang", null);
-        if (language != null){
-            setLocale(language);
-        }
-        else{
-            setLocale("en");
-        }
+        String language = prefs.getString("My_Lang", "fa"); // Default to Persian
+        setLocale(language);
+
     }
     public static boolean isValidVideoURL(String url) {
         String regex = "^(https?://)?(www\\.)?(youtube\\.com/watch\\?v=|youtu\\.be/)[\\w-]+|https?://\\S+?\\.(mp4|mkv)((\\?\\S*)?(#\\S*)?|(#\\S*)?(\\?\\S*)?)$";
@@ -885,9 +884,9 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         if (usersCountLabel != null && usersCountInRoom != null) {
             // Update the text dynamically
             if (isServer){
-                usersCountInRoom.setText(count-1);
+                usersCountInRoom.setText(String.valueOf(count-1));
             }else{
-                usersCountInRoom.setText(count);
+                usersCountInRoom.setText(String.valueOf(count));
             }
         }
     }
