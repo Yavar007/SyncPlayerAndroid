@@ -50,7 +50,6 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSetMultimap;
 import com.yavar007.syncplayer.database.RoomDatabaseHelper;
-import com.yavar007.syncplayer.interfaces.IMainViewControls;
 import com.yavar007.syncplayer.misc.ParseMessages;
 import com.yavar007.syncplayer.misc.RoomIdGenerator;
 import com.yavar007.syncplayer.misc.UsersListAdapter;
@@ -61,13 +60,11 @@ import com.yavar007.syncplayer.models.CommunicationModels.PlayerMessageModel;
 import com.yavar007.syncplayer.models.CommunicationModels.MessageModel;
 import com.yavar007.syncplayer.models.CommunicationModels.RequestToJoinMessageModel;
 import com.yavar007.syncplayer.models.UsersInRoomModel;
-import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
-
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.List;
@@ -146,13 +143,14 @@ public class MainActivity extends AppCompatActivity {
                     System.currentTimeMillis()));
 
         }
+        //Region Do Not Change The Order
         InitializeUI();
         SetupPlayerAndView();
-
         PlayerEvents();
         CheckPlayerStatusEverySecond();
         InitializeMQTTClient();
         MessageReceiver();
+        //EndRegion
         specChecker = Executors.newScheduledThreadPool(1);
         goPortrait();
     }
