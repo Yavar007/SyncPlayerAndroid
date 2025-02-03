@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Sync Player</string>
-    <string name="tvTypeUsername">Please Enter Your Username</string>
+    <string name="tvTypeUsername">Please Enter Your Nickname</string>
     <string name="etUsernameHint">Username</string>
     <string name="etUrlFieldHint">Movie Link URL</string>
     <string name="etRoomIDField">Room ID</string>
@@ -13,7 +13,7 @@
     <string name="swThemeD">Dark</string>
     <string name="swThemeL">Light</string>
     <string name="imgBackDesc">Background Image</string>
-    <string name="errEnterUN">Please Enter a Username First</string>
+    <string name="errEnterUN">Please Enter a Nickname First</string>
     <string name="toastRoomIDCopied">Room ID: %s copied to clipboard</string>
     <string name="errRoomIDNA">Room ID is Empty</string>
     <string name="errMovieURLNA">Please Enter Movie URL First</string>

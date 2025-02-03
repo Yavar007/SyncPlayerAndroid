@@ -54,6 +54,7 @@ import com.yavar007.syncplayer.interfaces.IMainViewControls;
 import com.yavar007.syncplayer.misc.ParseMessages;
 import com.yavar007.syncplayer.misc.RoomIdGenerator;
 import com.yavar007.syncplayer.misc.UsersListAdapter;
+import com.yavar007.syncplayer.models.ClientModel;
 import com.yavar007.syncplayer.models.CommunicationModels.AcceptMessageModel;
 import com.yavar007.syncplayer.models.CommunicationModels.AliveMessageModel;
 import com.yavar007.syncplayer.models.CommunicationModels.PlayerMessageModel;
@@ -81,7 +82,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 
-public class MainActivity extends AppCompatActivity implements IMainViewControls {
+public class MainActivity extends AppCompatActivity {
     private ExoPlayer player;
     private PlayerView playerView;
     private EditText urlEditText;
@@ -93,6 +94,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
     private boolean isServer=true;
     private String username;
     private MqttClient mqttClient;
+    private ClientModel client;
     private String movieLInk="";
     private String jsonString = "";
     private String osName = "";
@@ -109,7 +111,8 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
     private TextView usersCountInRoom;
     private ScheduledExecutorService specChecker;
     private boolean isClientConnected=true;
-    @OptIn(markerClass = UnstableApi.class)
+    private Thread checkEverySecond=null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         loadLocale();
@@ -121,19 +124,19 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
-        osName = "Android "+ Build.VERSION.RELEASE;
-        deviceName= Build.MODEL;
-        String combinedInfo = osName + "-" + deviceName;
-        String broker = "tcp://broker.emqx.io:1883";
-        clientId = UUID.nameUUIDFromBytes(combinedInfo.getBytes()).toString();
-        roomDatabaseHelper=new RoomDatabaseHelper(this);
-        roomDatabaseHelper.deleteAllData();
         Bundle bundle=getIntent().getExtras();
         if (bundle!=null){
             isServer=bundle.getBoolean("isServer");
             username=bundle.getString("username");
         }
+        osName = "Android "+ Build.VERSION.RELEASE;
+        deviceName= Build.MODEL;
+        String combinedInfo = osName + "-" + deviceName;
+        clientId = UUID.nameUUIDFromBytes(combinedInfo.getBytes()).toString();
+        client=new ClientModel(clientId,deviceName,osName,username);
+        roomDatabaseHelper=new RoomDatabaseHelper(this);
+        roomDatabaseHelper.deleteAllData();
+
         if (roomDatabaseHelper.selectAllData().isEmpty()){
             roomDatabaseHelper.insertData(new UsersInRoomModel(clientId
                     ,username
@@ -143,7 +146,18 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
                     System.currentTimeMillis()));
 
         }
+        InitializeUI();
+        SetupPlayerAndView();
 
+        PlayerEvents();
+        CheckPlayerStatusEverySecond();
+        InitializeMQTTClient();
+        MessageReceiver();
+        specChecker = Executors.newScheduledThreadPool(1);
+        goPortrait();
+    }
+    @OptIn(markerClass = UnstableApi.class)
+    private void InitializeUI(){
         NavigationView navigationView = findViewById(R.id.navigation_view);
         usersCountLabel = navigationView.getHeaderView(0).findViewById(R.id.usersCountLabel);
         usersCountInRoom = navigationView.getHeaderView(0).findViewById(R.id.usersCountInRoom);
@@ -157,10 +171,10 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         playerView = findViewById(R.id.playerView);
         urlEditText = findViewById(R.id.et_urlfield);
         playButton = findViewById(R.id.btn_Play);
-        ImageButton playpausebutton=playerView.findViewById(R.id.exo_play_pause);
-        ImageButton playingsettings=playerView.findViewById(androidx.media3.ui.R.id.exo_settings);
-        ImageButton subtitlebutton=playerView.findViewById(androidx.media3.ui.R.id.exo_subtitle);
-        DefaultTimeBar playerseekbar=playerView.findViewById(androidx.media3.ui.R.id.exo_progress);
+        ImageButton playPauseButton=playerView.findViewById(R.id.exo_play_pause);
+        ImageButton playingSettings=playerView.findViewById(androidx.media3.ui.R.id.exo_settings);
+        ImageButton subtitleButton=playerView.findViewById(androidx.media3.ui.R.id.exo_subtitle);
+        DefaultTimeBar playerSeekbar=playerView.findViewById(androidx.media3.ui.R.id.exo_progress);
         if (Locale.getDefault().getLanguage().equals("fa")) {
             Typeface typeface = null;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -172,25 +186,73 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         }
         if (!isServer){
             playButton.setText(R.string.btnJoinPLay);
-            playpausebutton.setVisibility(View.GONE);
-            playingsettings.setVisibility(View.GONE);
-            subtitlebutton.setVisibility(View.GONE);
-            playerseekbar.setVisibility(View.GONE);
+            playPauseButton.setVisibility(View.GONE);
+            playingSettings.setVisibility(View.GONE);
+            subtitleButton.setVisibility(View.GONE);
+            playerSeekbar.setVisibility(View.GONE);
             playerView.setShowSubtitleButton(false);
+            urlEditText.setHint(R.string.etRoomIDField);
         }
-        if (isServer){
+        else{
             roomID= new RoomIdGenerator().generateRoomId();
             tv_RoomID.setText(roomID);
             urlEditText.setHint(R.string.etUrlFieldHint);
-        }
-        else{
-            urlEditText.setHint(R.string.etRoomIDField);
-        }
-        player = new ExoPlayer.Builder(this).build();
-        playerView.setPlayer(player);
-        if (isServer){
             playerView.setShowSubtitleButton(true);
         }
+        playButton.setOnClickListener(_ -> {
+            if (mqttClient!=null ){
+                if (mqttClient.isConnected()){
+                    if (isServer){
+                        loadVideo();
+                        if (!movieLInk.isEmpty()){
+                            if (movieLInk.contains(".mkv") || movieLInk.contains(".mp4")){
+                                play();
+                                if (!checkEverySecond.isAlive()){
+                                    checkEverySecond.start();
+                                }
+                            }
+                            else {
+                                if (player.isPlaying()){
+                                    player.stop();
+                                }
+                                Toast.makeText(MainActivity.this, R.string.errMovieLinkVerify, Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                    else{
+                        roomID=urlEditText.getText().toString();
+                        if (!roomID.isEmpty()){
+                            tv_RoomID.setText(roomID);
+                            sendMessage(roomID,
+                                    new RequestToJoinMessageModel(clientId
+                                            , "req", deviceName, osName, "client", roomID, username));
+                        }
+                        else {
+                            Toast.makeText(MainActivity.this, R.string.errRoomIDEmpty, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    startUserCheck();
+                }
+
+            }
+        });
+        tv_RoomID.setOnClickListener(_ -> {
+            String ctext=tv_RoomID.getText().toString();
+            if (!ctext.isEmpty()){
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("",ctext ); // Empty label
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(MainActivity.this, String.format(getString(R.string.toastRoomIDCopied), ctext), Toast.LENGTH_SHORT).show();
+            }
+            else{
+                Toast.makeText(getApplicationContext(), R.string.errRoomIDNA, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    @OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
+    private void SetupPlayerAndView() {
+        player = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(player);
         playerView.setShowSubtitleButton(true);
         playerView.setShowNextButton(false);
         playerView.setShowFastForwardButton(false);
@@ -199,7 +261,6 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         playerView.setShowShuffleButton(false);
         playerView.setShowVrButton(false);
         playerView.setShowPlayButtonIfPlaybackIsSuppressed(false);
-
         playerView.setOnClickListener(_ -> {
             if (playButton.getVisibility()==View.VISIBLE){
                 playerView.hideController();
@@ -214,12 +275,25 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
                 tv_RoomID.setVisibility(View.VISIBLE);
             }
         });
+        playerView.setFullscreenButtonClickListener(_ -> {
+            int orientation = getResources().getConfiguration().orientation;
+            if (orientation == 1) {
+                goLandscape();
+            } else if (orientation == 2) {
+                goPortrait();
+            }
+        });
+    }
+    @OptIn(markerClass = UnstableApi.class)
+    private void PlayerEvents(){
         player.addListener(new Player.Listener() {
             @Override
             public void onEvents(@NonNull Player player, @NonNull Player.Events events) {
 
                 Player.Listener.super.onEvents(player, events);
             }
+
+
             @Override
             public void onTracksChanged(@NonNull Tracks tracks) {
                 if (tracks.containsType(C.TRACK_TYPE_AUDIO)) {
@@ -300,54 +374,50 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
                 Player.Listener.super.onIsPlayingChanged(isPlaying);
             }
         });
-        Thread checkeverysecond=new Thread(()->{
-           while (!interruptedWhile){
-               try {
-                   Thread.sleep(3000);
-                   runOnUiThread(() -> {
-                       if (mqttClient.isConnected()){
-                           if (player.isPlaying()) {
-                               int sub = Integer.parseInt(subTitle);
-                               int audio = Integer.parseInt(selectedAudio);
-                               String msg = player.getCurrentPosition() + ":" + sub + ":" + audio;
-                               PlayerMessageModel play = new PlayerMessageModel(clientId,
-                                       "play", deviceName, osName,
-                                       "server",username, msg, roomID);
-                               sendMessage(roomID, play);
-                               Log.v(TAG, "Time Sent: " + msg);
-                           } else {
-                               String msg = "paused";
-                               PlayerMessageModel play = new PlayerMessageModel(clientId,
-                                       "play", deviceName, osName,
-                                       "server",username, msg, roomID);
-                               sendMessage(roomID, play);
-                               Log.v(TAG, "Time Sent: " + msg);
-                           }
-                       }
-                       else {
-                           if (player.isPlaying()){
-                               stop();
-                               player.release();
-                           }
-                           Toast.makeText(MainActivity.this,R.string.errDisconnected, Toast.LENGTH_SHORT).show();
-                       }
+    }
+    private void CheckPlayerStatusEverySecond(){
+        checkEverySecond=new Thread(()->{
+            while (!interruptedWhile){
+                try {
+                    Thread.sleep(3000);
+                    runOnUiThread(() -> {
+                        if (mqttClient.isConnected()){
+                            if (player.isPlaying()) {
+                                int sub = Integer.parseInt(subTitle);
+                                int audio = Integer.parseInt(selectedAudio);
+                                String msg = player.getCurrentPosition() + ":" + sub + ":" + audio;
+                                PlayerMessageModel play = new PlayerMessageModel(clientId,
+                                        "play", deviceName, osName,
+                                        "server",username, msg, roomID);
+                                sendMessage(roomID, play);
+                                Log.v(TAG, "Time Sent: " + msg);
+                            } else {
+                                String msg = "paused";
+                                PlayerMessageModel play = new PlayerMessageModel(clientId,
+                                        "play", deviceName, osName,
+                                        "server",username, msg, roomID);
+                                sendMessage(roomID, play);
+                                Log.v(TAG, "Time Sent: " + msg);
+                            }
+                        }
+                        else {
+                            if (player.isPlaying()){
+                                stop();
+                                player.release();
+                            }
+                            Toast.makeText(MainActivity.this,R.string.errDisconnected, Toast.LENGTH_SHORT).show();
+                        }
 
-                   });
-               } catch (InterruptedException e) {
-                   throw new RuntimeException(e);
-               }
-           }
-        });
-        playerView.setFullscreenButtonClickListener(_ -> {
-            int orientation = getResources().getConfiguration().orientation;
-            if (orientation == 1) {
-                goLandscape();
-            } else if (orientation == 2) {
-                goPortrait();
+                    });
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
-
+    }
+    private void InitializeMQTTClient(){
         try {
+            String broker = "tcp://broker.emqx.io:1883";
             mqttClient = new MqttClient(broker, clientId, new MemoryPersistence());
             MqttConnectOptions options = new MqttConnectOptions();
             options.setCleanSession(true);
@@ -369,94 +439,93 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         } catch (MqttException e) {
             System.out.println(e.getMessage());
         }
-
+    }
+    private void MessageReceiver(){
         try {
-            mqttClient.subscribe("syncplayer/rooms", new IMqttMessageListener() {
-                @Override
-                public void messageArrived(String s, MqttMessage mqttMessage) {
-                    String remsg = new String(mqttMessage.getPayload());
-                    if (s.equals("syncplayer/rooms")){
-                        if (remsg.startsWith(roomID)) {
-                            remsg = remsg.split(":")[1]+":"+remsg.split(":")[2];
-                            MessageModel message=new ParseMessages().parseMessage(remsg,MainActivity.this);
-                            if (!message.getId().equals(clientId)){
-                                if (isServer){
-                                    if (message.getType().equals("req")){
-                                        RequestToJoinMessageModel req=(RequestToJoinMessageModel) message;
-                                        if (req.getRoomId().equals(roomID)){
-                                            String answer=req.getId();
-                                            String username1 =req.getUserName();
-                                            String deviceOS=req.getDeviceOs();
-                                            String clientRole=req.getClientRole();
-                                            if (roomDatabaseHelper.canAddUser()){
-                                                sendMessage(roomID,
-                                                        new AcceptMessageModel(clientId,
-                                                                "acc",
-                                                                deviceName
-                                                                ,osName,
-                                                                "server",username,
-                                                                answer,movieLInk,roomID));
-                                                UsersInRoomModel spectatorModel= new UsersInRoomModel(answer,
-                                                        username1,deviceOS,clientRole,true,
-                                                        System.currentTimeMillis());
-                                                addNewSpectator(spectatorModel);
-                                            }
-                                        }
-                                    }else if (message.getType().equals("alv")){
-                                        AliveMessageModel alive=(AliveMessageModel) message;
-                                        if (alive.getRoomId().equals(roomID)){
-                                            editSpectator(
-                                                    new UsersInRoomModel(alive.getId(),
-                                                            alive.getUserName(),
-                                                            alive.getDeviceOs(),
-                                                            alive.getClientRole(),
-                                                            true,
-                                                            System.currentTimeMillis()));
+            mqttClient.subscribe("syncplayer/rooms", (s, mqttMessage) -> {
+                String remsg = new String(mqttMessage.getPayload());
+                if (s.equals("syncplayer/rooms")){
+                    if (remsg.startsWith(roomID)) {
+                        remsg = remsg.split(":")[1]+":"+remsg.split(":")[2];
+                        MessageModel message=new ParseMessages().parseMessage(remsg,MainActivity.this);
+                        if (!message.getId().equals(client.getId())){
+                            if (isServer){
+                                if (message.getType().equals("req")){
+                                    RequestToJoinMessageModel req=(RequestToJoinMessageModel) message;
+                                    if (req.getRoomId().equals(roomID)){
+                                        String answer=req.getId();
+                                        String username1 =req.getUserName();
+                                        String deviceOS=req.getDeviceOs();
+                                        String clientRole=req.getClientRole();
+                                        if (roomDatabaseHelper.canAddUser()){
+                                            sendMessage(roomID,
+                                                    new AcceptMessageModel(client.getId(),
+                                                            "acc",
+                                                            client.getDeviceName()
+                                                            ,client.getDeviceOs(),
+                                                            "server",client.getUserName(),
+                                                            answer,movieLInk,roomID));
+                                            UsersInRoomModel spectatorModel= new UsersInRoomModel(answer,
+                                                    username1,deviceOS,clientRole,true,
+                                                    System.currentTimeMillis());
+                                            addNewSpectator(spectatorModel);
                                         }
                                     }
+                                }else if (message.getType().equals("alv")){
+                                    AliveMessageModel alive=(AliveMessageModel) message;
+                                    if (alive.getRoomId().equals(roomID)){
+                                        editSpectator(
+                                                new UsersInRoomModel(alive.getId(),
+                                                        alive.getUserName(),
+                                                        alive.getDeviceOs(),
+                                                        alive.getClientRole(),
+                                                        true,
+                                                        System.currentTimeMillis()));
+                                    }
                                 }
-                                else {
-                                    if (message.getType().equals("acc")){
-                                        AcceptMessageModel acc=(AcceptMessageModel)message;
-                                        if (acc.getMessage().equals(clientId)){
-                                            setMovieLink(acc.getMovieLink());
-                                            UsersInRoomModel server=new UsersInRoomModel(acc.getId(),
-                                                    acc.getUserName(),acc.getDeviceOs(),"server",true,
-                                                    System.currentTimeMillis());
-                                            addNewSpectator(server);
+                            }
+                            else {
+                                if (message.getType().equals("acc")){
+                                    AcceptMessageModel acc=(AcceptMessageModel)message;
+                                    if (acc.getMessage().equals(client.getId())){
+                                        setMovieLink(acc.getMovieLink());
+                                        UsersInRoomModel server=new UsersInRoomModel(acc.getId(),
+                                                acc.getUserName(),acc.getDeviceOs(),"server",true,
+                                                System.currentTimeMillis());
+                                        addNewSpectator(server);
 //                                            ClientJoinedMessageModel clj=new ClientJoinedMessageModel(clientId,
 //                                                    "clj",
 //                                                    deviceName,osName,"client",username,acc.getRoomId());
 //                                            sendMessage(acc.getRoomId(),clj);
-                                        }
                                     }
-                                    else if (message.getType().equals("play")){
-                                        PlayerMessageModel play=(PlayerMessageModel) message;
-                                        if (play.getRoomId().equals(roomID)){
-                                            setMovieTime(play.getMessage());
-                                            UsersInRoomModel server=new UsersInRoomModel(play.getId(),
-                                                    play.getUserName(),play.getDeviceOs(),"server",true,
-                                                    System.currentTimeMillis());
-                                            editSpectator(server);
-                                            AliveMessageModel aliveMessageModel=new AliveMessageModel(
-                                                    clientId, "alv", deviceName,osName,
-                                                    "client",roomID,username
-                                            );
-                                            sendMessage(roomID,aliveMessageModel);
-                                        }
+                                }
+                                else if (message.getType().equals("play")){
+                                    PlayerMessageModel play=(PlayerMessageModel) message;
+                                    if (play.getRoomId().equals(roomID)){
+                                        setMovieTime(play.getMessage());
+                                        UsersInRoomModel server=new UsersInRoomModel(play.getId(),
+                                                play.getUserName(),play.getDeviceOs(),"server",true,
+                                                System.currentTimeMillis());
+                                        editSpectator(server);
+                                        AliveMessageModel aliveMessageModel=new AliveMessageModel(
+                                                client.getId(), "alv", client.getDeviceName(),client.getDeviceOs(),
+                                                "client",roomID,client.getUserName()
+                                        );
+                                        sendMessage(roomID,aliveMessageModel);
+                                    }
 
-                                    }  else if (message.getType().equals("alv") && !message.getId().equals(clientId)) {
-                                        AliveMessageModel alive=(AliveMessageModel) message;
-                                        if (alive.getRoomId().equals(roomID)){
-                                            editSpectator(
-                                                    new UsersInRoomModel(alive.getId(),
-                                                            alive.getUserName(),
-                                                            alive.getDeviceOs(),
-                                                            alive.getClientRole(),
-                                                            true,
-                                                            System.currentTimeMillis()));
-                                        }
+                                }  else if (message.getType().equals("alv") && !message.getId().equals(client.getId())) {
+                                    AliveMessageModel alive=(AliveMessageModel) message;
+                                    if (alive.getRoomId().equals(roomID)){
+                                        editSpectator(
+                                                new UsersInRoomModel(alive.getId(),
+                                                        alive.getUserName(),
+                                                        alive.getDeviceOs(),
+                                                        alive.getClientRole(),
+                                                        true,
+                                                        System.currentTimeMillis()));
                                     }
+                                }
 //                                    else if (message.getType().equals("clj") && !message.getId().equals(clientId)) {
 //                                        ClientJoinedMessageModel clj=(ClientJoinedMessageModel) message;
 //                                        if (clj.getRoomId().equals(roomID)){
@@ -469,71 +538,18 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
 //                                        }
 //
 //                                    }
-                                }
                             }
-
                         }
+
                     }
                 }
-
             });
 
         }catch (MqttException e){
             System.out.println(e.getMessage());
         }
-        playButton.setOnClickListener(_ -> {
-            if (mqttClient!=null ){
-                if (mqttClient.isConnected()){
-                    if (isServer){
-                        loadVideo();
-                        if (!movieLInk.isEmpty()){
-                            if (movieLInk.contains(".mkv") || movieLInk.contains(".mp4")){
-                                play();
-                                if (!checkeverysecond.isAlive()){
-                                    checkeverysecond.start();
-                                }
-                            }
-                            else {
-                                if (player.isPlaying()){
-                                    player.stop();
-                                }
-                                Toast.makeText(MainActivity.this, R.string.errMovieLinkVerify, Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    }
-                    else{
-                        roomID=urlEditText.getText().toString();
-                        if (!roomID.isEmpty()){
-                            tv_RoomID.setText(roomID);
-                            sendMessage(roomID,
-                                    new RequestToJoinMessageModel(clientId
-                                            , "req", deviceName, osName, "client", roomID, username));
-                        }
-                        else {
-                            Toast.makeText(MainActivity.this, R.string.errRoomIDEmpty, Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                    startUserCheck();
-                }
-
-            }
-        });
-        tv_RoomID.setOnClickListener(_ -> {
-            String ctext=tv_RoomID.getText().toString();
-            if (!ctext.isEmpty()){
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clip = ClipData.newPlainText("",ctext ); // Empty label
-                clipboard.setPrimaryClip(clip);
-                Toast.makeText(MainActivity.this, String.format(getString(R.string.toastRoomIDCopied), ctext), Toast.LENGTH_SHORT).show();
-            }
-            else{
-                Toast.makeText(getApplicationContext(), R.string.errRoomIDNA, Toast.LENGTH_SHORT).show();
-            }
-        });
-        specChecker = Executors.newScheduledThreadPool(1);
-        goPortrait();
     }
-    public void sendMessage(String roomID, MessageModel messageModel) {
+    private void sendMessage(String roomID, MessageModel messageModel) {
             ObjectMapper objectMapper = new ObjectMapper();
             try {
                 jsonString = objectMapper.writeValueAsString(messageModel);
@@ -560,7 +576,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
                 }
             }
     }
-    public String encrypt(String strToEncrypt, String secret) {
+    private String encrypt(String strToEncrypt, String secret) {
         try {
             IvParameterSpec iv = generateIv();
             SecretKeySpec secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "AES");
@@ -578,7 +594,6 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         new SecureRandom().nextBytes(iv);
         return new IvParameterSpec(iv);
     }
-
     @SuppressLint("SourceLockedOrientationActivity")
     private void goPortrait() {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -677,7 +692,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
                         .build());
         subDisabled =true;
     }
-    public void loadVideo() {
+    private void loadVideo() {
         String url = urlEditText.getText().toString();
         if (!url.isEmpty()) {
             if (isValidVideoURL(url)){
@@ -689,22 +704,18 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
             else {
                 Toast.makeText(getApplicationContext(), R.string.errMovieLinkVerify, Toast.LENGTH_SHORT).show();
             }
-
         }
         else{
             Toast.makeText(getApplicationContext(),R.string.errMovieURLNA, Toast.LENGTH_SHORT).show();
         }
-
-
-
     }
-    public void play() {
+    private void play() {
         player.play();
     }
-    public void pause() {
+    private void pause() {
         player.pause();
     }
-    public void stop() {
+    private void stop() {
         player.stop();
     }
     @Override
@@ -735,12 +746,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         }
         super.onDestroy();
     }
-    @Override
-    public void setUsername(String username) {
-
-    }
-    @Override
-    public void setMovieLink(String movieLink) {
+    private void setMovieLink(String movieLink) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -754,8 +760,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
             }
         });
     }
-    @Override
-    public void setMovieTime(String movieTime) {
+    private void setMovieTime(String movieTime) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -813,7 +818,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
             }
         });
     }
-    public void editSpectator(UsersInRoomModel spectator){
+    private void editSpectator(UsersInRoomModel spectator){
         UsersInRoomModel usersInRoom=roomDatabaseHelper.selectData(spectator.getID());
 
         if (usersInRoom == null) {
@@ -823,8 +828,7 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         roomDatabaseHelper.updateData(spectator);
         updateRecyclerView();
     }
-    @Override
-    public void addNewSpectator(UsersInRoomModel spectator) {
+    private void addNewSpectator(UsersInRoomModel spectator) {
         roomDatabaseHelper.insertData(spectator);
         runOnUiThread(new Runnable() {
             @Override
@@ -837,10 +841,6 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
             }
         });
         updateRecyclerView();
-    }
-    @Override
-    public void showMessage(String message) {
-
     }
     private void setLocale(String lang) {
         Locale locale = new Locale(lang);
@@ -857,13 +857,13 @@ public class MainActivity extends AppCompatActivity implements IMainViewControls
         }
 
     }
-    public void loadLocale() {
+    private void loadLocale() {
         SharedPreferences prefs = getSharedPreferences("Settings", Activity.MODE_PRIVATE);
         String language = prefs.getString("My_Lang", "fa"); // Default to Persian
         setLocale(language);
 
     }
-    public static boolean isValidVideoURL(String url) {
+    private static boolean isValidVideoURL(String url) {
         String regex = "^(https?://)?(www\\.)?(youtube\\.com/watch\\?v=|youtu\\.be/)[\\w-]+|https?://\\S+?\\.(mp4|mkv)((\\?\\S*)?(#\\S*)?|(#\\S*)?(\\?\\S*)?)$";
 //        Pattern VIDEO_URL_PATTERN = Pattern.compile(
 //                "^(http|https):\\/\\/.*\\.(mkv|mp4)$"

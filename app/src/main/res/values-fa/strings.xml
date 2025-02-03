@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sync Player</string>
-    <string name="tvTypeUsername">لطفا نام کاربری خود را وارد کنید</string>
+    <string name="tvTypeUsername">لطفا نامی برای خود وارد کنید</string>
     <string name="etUsernameHint">نام کاربری</string>
     <string name="etUrlFieldHint">لینک فیلم</string>
     <string name="etRoomIDField">شناسه اتاق</string>
@@ -14,7 +14,7 @@
     <string name="swThemeD">تاریک</string>
     <string name="swThemeL">روشن</string>
     <string name="imgBackDesc">تصویر پس‌زمینه</string>
-    <string name="errEnterUN">لطفا اول یک نام کاربری وارد کنید</string>
+    <string name="errEnterUN">لطفا اول یک نامی وارد کنید</string>
     <string name="toastRoomIDCopied">شناسه اتاق : %s در کلیپ برد ذخیره شد</string>
     <string name="errRoomIDNA">شناسه اتاق خالی میباشد</string>
     <string name="errMovieURLNA">لطفا اول آدرس فیلم را وارد کنید</string>

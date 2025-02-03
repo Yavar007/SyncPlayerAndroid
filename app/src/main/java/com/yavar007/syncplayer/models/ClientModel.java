@@ -4,11 +4,13 @@ public class ClientModel {
     private String id;
     private String deviceName;
     private String deviceOs;
+    private String UserName;
 
-    public ClientModel(String id, String deviceName, String deviceOs) {
+    public ClientModel(String id, String deviceName, String deviceOs,String UserName) {
         this.id = id;
         this.deviceName = deviceName;
         this.deviceOs = deviceOs;
+        this.UserName=UserName;
     }
 
     public String getId() {
@@ -33,5 +35,13 @@ public class ClientModel {
 
     public void setDeviceOs(String deviceOs) {
         this.deviceOs = deviceOs;
+    }
+
+    public String getUserName() {
+        return UserName;
+    }
+
+    public void setUserName(String userName) {
+        UserName = userName;
     }
 }
