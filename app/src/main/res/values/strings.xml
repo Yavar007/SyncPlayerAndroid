@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Sync Player</string>
     <string name="tvTypeUsername">Please Enter Your Nickname</string>
-    <string name="etUsernameHint">Username</string>
+    <string name="etUsernameHint">Nickname</string>
     <string name="etUrlFieldHint">Movie Link URL</string>
     <string name="etRoomIDField">Room ID</string>
     <string name="btnClient">Spectator</string>
@@ -26,4 +26,6 @@
     <string name="onRoomOwnerDisconnected">Projectionist is Offline !</string>
     <string name="usersInRoomCountLabel">Spectators In Room: </string>
     <string name="secretKey">b007clientsCnema</string>
+    <string name="tvDelayHint">"Delay : "</string>
+    <string name="delayLowValue">This Delay Value is Lower than Standard Delay (500)</string>
 </resources>

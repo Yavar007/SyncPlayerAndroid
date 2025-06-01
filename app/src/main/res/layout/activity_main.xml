@@ -72,16 +72,68 @@
         android:layout_gravity="start"
         android:fitsSystemWindows="true"
         android:paddingTop="5dp"
-        app:headerLayout="@layout/nav_header">
+
+        >
 
         <!-- RecyclerView for Sidebar -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_view_sidebar"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginTop="20dp"
-            android:padding="16dp"
-            tools:listitem="@layout/users_list_view" />
+            android:orientation="vertical">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/usersCountLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center|end"
+                    android:text="perferc" />
+
+                <TextView
+                    android:id="@+id/usersCountInRoom"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=": 20" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/delayHolder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_DelayHint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tvDelayHint" />
+
+                <EditText
+                    android:id="@+id/et_Delay"
+                    android:layout_width="100dp"
+                    android:layout_height="48dp"
+                    android:ems="10"
+                    android:gravity="center"
+                    android:inputType="number"
+                    android:text="500" />
+
+            </LinearLayout>
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view_sidebar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="5dp"
+                android:padding="16dp"
+                tools:listitem="@layout/users_list_view" />
+        </LinearLayout>
+
+
     </com.google.android.material.navigation.NavigationView>
 
 </androidx.drawerlayout.widget.DrawerLayout>

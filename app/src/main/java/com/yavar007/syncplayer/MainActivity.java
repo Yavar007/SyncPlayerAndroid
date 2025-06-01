@@ -14,6 +14,8 @@ import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
@@ -21,6 +23,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
@@ -86,8 +89,8 @@ public class MainActivity extends AppCompatActivity {
     private Button playButton;
     private TextView tv_RoomID;
     private boolean isFullscreen = false;
-    private String selectedAudio = null;
-    private String subTitle = null;
+    private String selectedAudio = "-1";
+    private String subTitle = "-1";
     private boolean isServer=true;
     private String username;
     private MqttClient mqttClient;
@@ -97,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
     private String osName = "";
     private String deviceName= "";
     private String clientId = "";
-    private final int movieTimeDelay =500;
+    private int movieTimeDelay =500;
     private String roomID="";
     private boolean interruptedWhile =false;
     private UsersListAdapter usersListAdapter;
@@ -109,6 +112,10 @@ public class MainActivity extends AppCompatActivity {
     private ScheduledExecutorService specChecker;
     private boolean isClientConnected=true;
     private Thread checkEverySecond=null;
+    private EditText et_Delay;
+    private TextView tv_Delayhint;
+    private LinearLayout delayHolder;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -153,12 +160,14 @@ public class MainActivity extends AppCompatActivity {
         //EndRegion
         specChecker = Executors.newScheduledThreadPool(1);
         goPortrait();
+
     }
     @OptIn(markerClass = UnstableApi.class)
     private void InitializeUI(){
         NavigationView navigationView = findViewById(R.id.navigation_view);
-        usersCountLabel = navigationView.getHeaderView(0).findViewById(R.id.usersCountLabel);
-        usersCountInRoom = navigationView.getHeaderView(0).findViewById(R.id.usersCountInRoom);
+        //usersCountLabel = navigationView.getHeaderView(0).findViewById(R.id.usersCountLabel);
+        usersCountLabel = findViewById(R.id.usersCountLabel);
+        usersCountInRoom = findViewById(R.id.usersCountInRoom);
         usersCountLabel.setText(R.string.usersInRoomCountLabel);
         usersListAdapter=new UsersListAdapter(this,roomDatabaseHelper.selectAllData());
         RecyclerView recyclerView = findViewById(R.id.recycler_view_sidebar);
@@ -168,10 +177,14 @@ public class MainActivity extends AppCompatActivity {
         tv_RoomID=findViewById(R.id.tv_RoomID);
         playerView = findViewById(R.id.playerView);
         urlEditText = findViewById(R.id.et_urlfield);
+        et_Delay=findViewById(R.id.et_Delay);
+        tv_Delayhint=findViewById(R.id.tv_DelayHint);
+        delayHolder=findViewById(R.id.delayHolder);
         playButton = findViewById(R.id.btn_Play);
+
         ImageButton playPauseButton=playerView.findViewById(R.id.exo_play_pause);
         ImageButton playingSettings=playerView.findViewById(androidx.media3.ui.R.id.exo_settings);
-        ImageButton subtitleButton=playerView.findViewById(androidx.media3.ui.R.id.exo_subtitle);
+        ImageButton subtitleButton = playerView.findViewById(androidx.media3.ui.R.id.exo_subtitle);
         DefaultTimeBar playerSeekbar=playerView.findViewById(androidx.media3.ui.R.id.exo_progress);
         if (Locale.getDefault().getLanguage().equals("fa")) {
             Typeface typeface = null;
@@ -181,6 +194,7 @@ public class MainActivity extends AppCompatActivity {
             playButton.setTypeface(typeface);
             urlEditText.setTypeface(typeface);
             tv_RoomID.setTypeface(typeface);
+            tv_Delayhint.setTypeface(typeface);
         }
         if (!isServer){
             playButton.setText(R.string.btnJoinPLay);
@@ -190,12 +204,15 @@ public class MainActivity extends AppCompatActivity {
             playerSeekbar.setVisibility(View.GONE);
             playerView.setShowSubtitleButton(false);
             urlEditText.setHint(R.string.etRoomIDField);
+            et_Delay.setText(String.valueOf(movieTimeDelay));
         }
         else{
             roomID= new RoomIdGenerator().generateRoomId();
             tv_RoomID.setText(roomID);
             urlEditText.setHint(R.string.etUrlFieldHint);
             playerView.setShowSubtitleButton(true);
+            delayHolder.setVisibility(View.INVISIBLE);
+            delayHolder.getLayoutParams().height=0;
         }
         playButton.setOnClickListener(_ -> {
             if (mqttClient!=null ){
@@ -246,6 +263,24 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(getApplicationContext(), R.string.errRoomIDNA, Toast.LENGTH_SHORT).show();
             }
         });
+        et_Delay.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                if (charSequence.length()>2){
+                    int delay=Integer.parseInt(charSequence.toString());
+                    if (delay>=500){
+                        movieTimeDelay=delay;
+                    }
+                    else{
+                        Toast.makeText(MainActivity.this, getString(R.string.delayLowValue), Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+            @Override
+            public void afterTextChanged(Editable editable) {}
+        });
     }
     @OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
     private void SetupPlayerAndView() {
@@ -290,8 +325,6 @@ public class MainActivity extends AppCompatActivity {
 
                 Player.Listener.super.onEvents(player, events);
             }
-
-
             @Override
             public void onTracksChanged(@NonNull Tracks tracks) {
                 if (tracks.containsType(C.TRACK_TYPE_AUDIO)) {
@@ -304,8 +337,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                             if (trackGroup.getTrackFormat(0).codecs != null) {
                                 if (trackGroup.getTrackFormat(0).codecs.contains("subrip")) {
-                                    //trackGroup.getMediaTrackGroup().id
-
                                     subTitle = trackGroup.getMediaTrackGroup().id;
                                 }
                             }
@@ -336,6 +367,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (ob.isEmpty()) {
                     subTitle = "-1";
+                    selectedAudio="-1";
                 } else {
                     for (TrackGroup trackGroup : ob.keys().asList()) {
                         if (trackGroup != null){

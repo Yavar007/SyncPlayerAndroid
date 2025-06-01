@@ -27,4 +27,6 @@
     <string name="onRoomOwnerDisconnected">ارتباط با ارسال کننده قطع شد !</string>
     <string name="usersInRoomCountLabel">"تماشاچی های اتاق: "</string>
     <string name="secretKey">b007clientsCnema</string>
+    <string name="tvDelayHint">"تاخیر : "</string>
+    <string name="delayLowValue">مقدار تاخیر وارد شده کمتر از حد استاندارد آن میباشد (500)</string>
 </resources>

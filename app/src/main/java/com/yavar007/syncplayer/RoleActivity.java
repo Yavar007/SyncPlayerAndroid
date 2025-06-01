@@ -24,7 +24,6 @@ import java.util.Locale;
 
 
 public class RoleActivity extends AppCompatActivity {
-
     private EditText etUsername;
     private SwitchCompat swTheme;
     private SwitchCompat swLang;

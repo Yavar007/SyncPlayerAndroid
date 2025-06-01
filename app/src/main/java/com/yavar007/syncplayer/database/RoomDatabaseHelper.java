@@ -1,5 +1,6 @@
 package com.yavar007.syncplayer.database;
 
+import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -88,8 +89,8 @@ public class RoomDatabaseHelper extends SQLiteOpenHelper implements IRoomDatabas
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.query(TABLE_NAME, null, COLUMN_ID + " = ?", new String[]{id}, null, null, null);
 
-        if (cursor != null && cursor.moveToFirst()) {
-            UsersInRoomModel user = new UsersInRoomModel(
+        if (cursor.moveToFirst()) {
+            @SuppressLint("Range") UsersInRoomModel user = new UsersInRoomModel(
                     cursor.getString(cursor.getColumnIndex(COLUMN_ID)),
                     cursor.getString(cursor.getColumnIndex(COLUMN_NICKNAME)),
                     cursor.getString(cursor.getColumnIndex(COLUMN_OSNAME)),
@@ -102,9 +103,7 @@ public class RoomDatabaseHelper extends SQLiteOpenHelper implements IRoomDatabas
             return user;
         }
 
-        if (cursor != null) {
-            cursor.close();
-        }
+        cursor.close();
         db.close();
         return null;
     }
@@ -115,9 +114,9 @@ public class RoomDatabaseHelper extends SQLiteOpenHelper implements IRoomDatabas
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NAME, null);
 
-        if (cursor != null && cursor.moveToFirst()) {
+        if (cursor.moveToFirst()) {
             do {
-                UsersInRoomModel user = new UsersInRoomModel(
+                @SuppressLint("Range") UsersInRoomModel user = new UsersInRoomModel(
                         cursor.getString(cursor.getColumnIndex(COLUMN_ID)),
                         cursor.getString(cursor.getColumnIndex(COLUMN_NICKNAME)),
                         cursor.getString(cursor.getColumnIndex(COLUMN_OSNAME)),
@@ -130,9 +129,7 @@ public class RoomDatabaseHelper extends SQLiteOpenHelper implements IRoomDatabas
             cursor.close();
         }
 
-        if (cursor != null) {
-            cursor.close();
-        }
+        cursor.close();
         db.close();
         return users;
     }
