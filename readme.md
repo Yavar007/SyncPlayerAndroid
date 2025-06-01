@@ -4,7 +4,7 @@
   <img src="applogo.png" alt="SyncPlayer Android Logo" width="200">
 </div>
 
-**SyncPlayer for Android** is the mobile companion to the SyncPlayer desktop app — allowing users to **watch online video streams in real-time sync with others**. Perfect for friends, family, or teams who want to enjoy videos together from anywhere on their Android devices.
+**SyncPlayer for Android** is the mobile companion to the [SyncPlayer](https://github.com/Yavar007/SyncPlayer) — allowing users to **watch online video streams in real-time sync with others**. Perfect for friends, family, or teams who want to enjoy videos together from anywhere on their Android devices.
 
 ---
 
@@ -28,7 +28,7 @@
 
 ### Option 1: Direct APK
 
-1. Download the latest `.apk` from the [Releases](https://github.com/Yavar007/SyncPlayer/releases) section.
+1. Download the latest `.apk` from the [Releases](https://github.com/Yavar007/SyncPlayerAndroid/releases) section.
 2. Install it on your Android device.
 3. If you see a **Play Protect warning**, don’t worry — this is normal for sideloaded apps. You can safely proceed because:
     - The APK is **signed** with a real release key.
@@ -77,7 +77,27 @@ The Android version is stable for manual distribution and GitHub publishing. Not
 
 ## 🖼 Screenshots
 
-_Coming soon..._
+**Init Activity**
+<div align="center">
+  <img src="/screenshots/en-light-ff.jpg" alt="FirstForm_Light" width="300">
+  <img src="/screenshots/en-dark-ff.jpg" alt="FirstForm_Dark" width="300">
+</div>
+
+<br/>
+
+**Player Activity**
+
+<div align="center">
+  <img src="/screenshots/en-light-sf-pr.jpg" alt="SecondForm_Light" width="300px">
+  <img src="/screenshots/en-dark-sf-pr.jpg" alt="SecondForm_Dark" width="300">
+  <img src="/screenshots/en-light-sf-pro.jpg" alt="SecondForm_Users_List_Light" width="300">
+  <img src="/screenshots/en-dark-sf-pro.jpg" alt="SecondForm_Users_List_Dark" width="300">
+  <img src="/screenshots/en-light-sf-sp.jpg" alt="SecondForm_Spectator_Light" width="300">
+  <img src="/screenshots/en-dark-sf-sp.jpg" alt="SecondForm_Spectator_Dark" width="300">
+  <img src="/screenshots/en-light-sf-spo.jpg" alt="SecondForm_Spectator_Light" width="300">
+  <img src="/screenshots/en-dark-sf-spo.jpg" alt="SecondForm_Spectator_Dark" width="300">
+</div>
+
 
 ---
 
@@ -90,7 +110,7 @@ For questions, suggestions, or contributions:
 
 ---
 
-**Watch Together. Anywhere. Anytime.** 📱🎬
+**Enjoy Watching Movies with Your Friends!** 📱🎬
 
 ---
 
